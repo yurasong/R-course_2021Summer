@@ -1,0 +1,229 @@
+---
+title: "R course : Summer 2021"
+subtitle : "Day 1 : Deal with the files and packages"
+author: "Yura Song"
+date: '`r format(Sys.Date())`'
+output:
+  html_notebook:
+    toc: yes
+    toc_float: yes
+---
+
+# Introduction
+
+In this notebook, as an introduction of R, I will explain to you how to import files on the R global environment and play with the data. Since R is mainly working with *function*, which has specific role to deal with the data or object. Therefore, we will start to lean how to use this functions to play on R. 
+
+Also, R provides a lot of **packages**, the fundamental units of reproducible R codes. They include reusable R functions, the documentation that describes how to use them, and sample data. In other words, it is a kind of program which we are using for certain purpose. As of January 2015, there were over 6,000 packages available on the **C**omprehensive **R** **A**rchive **N**etwork, or CRAN, the public clearing house for R packages. 
+
+Before starting the steps, if you would like to see the help or description of each function, what we could use is question mark. We could write as *"?(function)"* and example is as below.
+```{r}
+?getwd
+```
+
+# Dealing with the Dataset
+
+## Working Directory and files
+Before starting the work on R, what we should check is current **location**, where you are working in the system. On R, the working directory should be same as where you put your files. If the current directory and the location of file is different, the system may show the error message or save the result files to the different directory where you did not set.
+
+To check my current directory, we could use *getwd* function, which means get working directory.
+
+```{r}
+getwd()
+```
+
+However, if your current location is not where you put your files? Then you could use *setwd* function, which means set working directory. In this case, you should put the **address of the target folder**.
+```{r}
+setwd("~/Desktop/R example")
+```
+
+So, now we are in the directory where we put the files. If you want to check which file is included in the directory which has been set as working directory, you could use *list.files* function. It will return the name of files which is in your current working directory.
+```{r}
+list.files()
+```
+
+##Import and check the data
+Now we are in the directory with the files. What we could do on R is import the data. However, the .xlsx (excel worksheet) is not portable on R and RStudio, so you should save the data as .csv or .txt format. If not, it may not read properly so the data would be broken.
+
+When you want to import the data in R, we could use *read.delim* or *read.table* function. Both does not have that difference, but *read.table* only reads the data with table format, as like excel sheet. However, in case of *read.delim*, it reads all the files which is deliminated by something, such as comma or tab. So, in my case, I highly recommend to use *read.delim*.
+
+Since we have two files in the folder, let's import one file first. Whenever you import the files into R, you should give the name to each job. If not, R may not save on environment, just print on the console. 
+```{r}
+count <- read.delim("rawcount.csv", h=T, sep=",")
+```
+
+Let's see the command line which I have used. So in *read.delim*, the first one in the quotation mark is the name of file which we want to import on R. **h** means whether it has header or not, so your data has the information of each column on the first line, this should be T(means TRUE). **sep** means how the data is deliminated, such as tab-deliminated or comma. This could be checked on excel, when you save your data because it may ask you which deliminator you would like to use.
+
+Also, when we import the data, on R, it will be called as the given name "count". The arrow means that I would like to give the name to imported data and it is necessary since we could use the imported data without given name.
+
+If it does not make any errors, the data is well imported. However, if you would like to check the format of data, what we could use is *head* function. It will show the first six lines of imported data.
+```{r}
+head(count)
+```
+
+If you would like to see first certain number of lines of your data, you could give specific number. In this example, I gave *n=10* to see the first ten lines of impoted dataset.
+```{r}
+head(count, n=10)
+```
+
+So, the data is well imported. However, if you want to check the full table, on another window, what you could use is *View* function. It will give you the whole datasets with scroll bar.
+```{r}
+View(count)
+```
+
+Sometimes, in the data, the duplicated value could be included. Since more than two times of same data may make the work taking longer time, we need to filter them out. In this case, *unique* function is used.
+```{r}
+count <- unique(count)
+```
+
+## Subset the files
+Sometimes when we deal with the sequencing data, what we want to do is selecting some variables, not taking all. It is also available on R, it is different from selecting one value or several values in one.
+
+We will work on the same datasets which we already imported. For instance, among the count value, we will only select the data from sample B. In this case, we could use dollar sign.
+```{r}
+head(count$B)
+```
+
+It only shows the values corresponding to the B. However, if we would like to include GeneID to sample B, it may not work with $ sign since it is not only one column we would like to select. In this case, we use bracket, [].
+
+In bracket, what we will do is setting the columns which we would like to select. If they are all continue, what we should do is give a input of the order of column in the bracket. In bracket, the order is [row, column].
+
+Since GeneID to sample B corresponds to Column 1 to 3, and we would like to take all the rows, what we could set is as below. 
+```{r}
+head(count[,1:3])
+```
+
+What if we would like to get the values of certain row and certain column? For instance, if we would like to get the first six rows and sample A and B?
+```{r}
+count[1:6, 1:3]
+```
+
+However, sometimes we could want to get the separated columns, such as B and D. Then we could use *c()*, it means that binding the several variables as a one set.
+```{r}
+head(count[,c(2,4)])
+```
+
+## Merge two files into one
+Sometimes, we need to make one file from two different files. If we are doing it on excel, it may take a long time since you should compare one by one. However, on R, if you have same criteria in each file, we could use the common factor as a standard for merging two files.
+
+Since we have another expression file in the directory, we will import it on R.
+```{r}
+count_1 <- read.delim("rawcount2.csv", h=T, sep=",")
+```
+
+Before merging two files, what we should check is whether the two files are sharing **common columns or row**. In this case, we could briefly check by *names* function, it will show the name of each column. This function only works with the data who has header.
+```{r}
+names(count)
+```
+
+```{r}
+names(count_1)
+```
+
+Since these two files are sharing the **GeneID** as common, we could use it for the standard. In this case, we use *merge* function.
+```{r}
+mer <- merge(count, count_1, by.x="GeneID", by.y="GeneID", all.x=FALSE)
+```
+
+In merge function, we should clarify two datasets which we would like to merge. **by.x** and **by.y** specifies the columns used for merging, the common columns between two data. Last one is the logical value, **FALSE** means that only rows with data from both x and y are included in the output and it is default setting. If we give it as **TRUE**, then extra rows will be added to the output.
+
+Let's how the files are merged.
+```{r}
+head(mer)
+```
+
+### Export 
+Now all the datasets are coming into one data. What we could do is export this result as a table, the format of .csv or .txt to use it on excel for further work. In this case, we usually use *write.table* format and we should clarify the format of file and deliminator.
+```{r}
+write.table(mer, "Merged_data.csv", quote=F, sep=",", row.names=F, col.names=T)
+```
+
+In this case, there would be more variables to clarify. First one is the data which we would like to export, and second one is the name and format of file. **quote** is a logical value, if it is T, all the values will be in quotation mark. **row.names** and **col.names** indicate whether the row and column name will be written or not, in our case, we only have column name. Therefore, the row.names is false and col.names is true.
+
+Also, after the work, you may want to save what you did on R. In this case we should save two files.
+```{r}
+save.image("Files.RData")
+```
+
+We could save the image of environment in **.RData** file, it saves all the data. Therefore, in next time, if we call this file on R, you could continue your job without importing all datasets which you have used.
+
+```{r}
+savehistory("Files_work.Rhistory")
+```
+Also, if you want to save all the functions which you have used during the process on R, you could save it as a text format into *.Rhistory* format. It also could be imported when you open R, and you could use it to track what you have done in previous job.
+
+# Using packages
+
+## Introduction
+
+In previous step, as a very beginning, we have tried to play with a set of data on R. Not only dealing with the data in table format, what we could do is analysis or drawing a plot with several functions. 
+
+Furthermore, R provides a lot of **packages**, the fundamental units of reproducible R codes. They include reusable R functions, the documentation that describes how to use them, and sample data. In other words, it is a kind of program which we are using for certain purpose. As of January 2015, there were over 6,000 packages available on the **C**omprehensive **R** **A**rchive **N**etwork, or CRAN, the public clearing house for R packages. 
+
+## Utilize packages
+ 
+### Install packages from CRAN
+
+To use the packages which we need, the first step is **installation** of packages. You could find the [list of available packages on CRAN mirror](https://cran.r-project.org/web/packages/available_packages_by_name.ht). It includes the brief description of each packages, so you could find the best one which you need.
+
+For instance, in this step, we will install the package called *ggplot2*, which will be used broadly when generating plots. To install the package, *install.package* function is used.
+```{r}
+install.packages("ggplot2")
+```
+
+If you would like to install several packages in a row, we could use **c()** command to bind several packages as one set.
+```{r}
+install.packages(c("ggplot2", "ggfortify", "gapminder"))
+```
+
+Since you put this *install.package* function with the name of package, the system will automatically start installation. Sometimes it may ask you which CRAN mirror to be used for installation, I highly recommend to choose **BELGIUM (Ghent)** because their library is already stable. If the error occurs, it would be better to copy the error message to google and check the list of sites on the five top. Most of people already had a same issue before and the others may share how they solved it.
+
+### Attach installed packages
+
+If the installation is finished, what we should do is **attach** the packages. It is a step to call the all the codes into R session, so you could use it directly. If you already installed your package, afterward, what you need to do is attachment.
+
+For attach the packages, the function *library* is used. Let's see the example.
+```{r}
+library(ggplot2)
+```
+
+When attaching packages, some shows the message as like this but others are not. However, it is not error message nor report. Therefore, the package is well attached and ready to be used.
+
+If you would like to call the several packages at one time, it is still possible but you could not use c() to bind the packages. You should put the one package in one *library* function.
+```{r}
+library(ggplot2)
+library(ggfortify)
+library(gapminder)
+```
+
+## Package from Bioconductor
+
+**Before starting this, your R version should be 3.6, the latest version.**
+
+Not like the general packages available on CRAN, most of bioinformatics-related packages are available via [Bioconductor](https://bioconductor.org/). For instance, DESeq2 for differential gene expression analysis is a part of Bioconductor project.
+
+To install the packages which is available via Bioconductor, we could not use it by *install.packages*. If we try to install the package belongs to the Bioconductor project, R automatically stops the installation with warning message.
+```{r}
+install.packages("GenomicFeatures")
+```
+
+To install the packages of Bioconductor, we should install the **BiocManager** package. If *BiocManager* is not installed on the system, it will automatically install it. Also, the BiocManager package serves as the primary way to ensure that the appropriate Bioconductor installation is used with respect to the version of R in use regardless of the R and Bioconductor release cycles.
+```{r}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+```
+
+If the BiocManager is ready, we could install the bioconductor packages as below. Also, if you would like to install several packages, you could use **c()** to indicate that you would like to install several packages at once.
+```{r}
+BiocManager::install("AnnotationDbi")
+```
+
+Why use BiocManager::install()? Bioconductor has a repository and release schedule that differs from R (Bioconductor has a different branch to which new packages and updates are introduced, and a stable ‘release’ branch emitted once every 6 months to which bug fixes but not new features are introduced).
+
+A consequence of the mismatch between R and Bioconductor release schedules is that the Bioconductor version identified by install.packages() is sometimes not the most recent ‘release’ available. For instance, an R minor version may be introduced some months before the next Bioc release. After the Bioc release the users of the R minor version will be pointed to an out-of-date version of Bioconductor.
+
+I think we are almost ready to start the making figures and analysis on R! In next step, we will try to draw some figures with basic functions of R. See you then!
+
+```{r}
+sessionInfo()
+```
+
