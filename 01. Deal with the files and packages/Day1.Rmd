@@ -94,7 +94,7 @@ head(count[,1:3])
 
 What if we would like to get the values of certain row and certain column? For instance, if we would like to get the first six rows and sample A and B?
 ```{r}
-count[1:6, 1:3]
+count[1:10, 1:3]
 ```
 
 However, sometimes we could want to get the separated columns, such as B and D. Then we could use *c()*, it means that binding the several variables as a one set.
@@ -103,9 +103,11 @@ head(count[,c(2,4)])
 ```
 
 ## Merge two files into one
+
 Sometimes, we need to make one file from two different files. If we are doing it on excel, it may take a long time since you should compare one by one. However, on R, if you have same criteria in each file, we could use the common factor as a standard for merging two files.
 
 Since we have another expression file in the directory, we will import it on R.
+
 ```{r}
 count_1 <- read.delim("rawcount2.csv", h=T, sep=",")
 ```
@@ -132,6 +134,7 @@ head(mer)
 ```
 
 ### Export 
+
 Now all the datasets are coming into one data. What we could do is export this result as a table, the format of .csv or .txt to use it on excel for further work. In this case, we usually use *write.table* format and we should clarify the format of file and deliminator.
 ```{r}
 write.table(mer, "Merged_data.csv", quote=F, sep=",", row.names=F, col.names=T)
@@ -208,12 +211,13 @@ install.packages("GenomicFeatures")
 
 To install the packages of Bioconductor, we should install the **BiocManager** package. If *BiocManager* is not installed on the system, it will automatically install it. Also, the BiocManager package serves as the primary way to ensure that the appropriate Bioconductor installation is used with respect to the version of R in use regardless of the R and Bioconductor release cycles.
 ```{r}
-if (!requireNamespace("BiocManager", quietly = TRUE))
+#if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 ```
 
 If the BiocManager is ready, we could install the bioconductor packages as below. Also, if you would like to install several packages, you could use **c()** to indicate that you would like to install several packages at once.
 ```{r}
+library(BiocManager)
 BiocManager::install("AnnotationDbi")
 ```
 

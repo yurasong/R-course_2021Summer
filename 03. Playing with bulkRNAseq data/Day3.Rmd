@@ -47,13 +47,24 @@ The quality assessment will be based on the DESeq2, therefore, we should generat
 # Count matrix
 countData <- count[,2:ncol(count)]
 rownames(countData) <- count[,1]
+
+head(countData)
 ```
 
 For sample information, the condition of sample, precise name of samples, and batch effect are required. For batch information, *rep()* could be used, rather than putting same information for several times.
+
 ```{r}
 colData <- data.frame(condition=c("Control", "Control", "Exp", "Exp"), 
                       precise=c("CTRL1", "CTRL2", "Exp1", "Exp2"))
 rownames(colData) <- colnames(countData)
+colData
+```
+
+```{r}
+colData <- data.frame(condition=c("Control", "Control", "Exp", "Exp"),
+                      precise=c("CTRL1", "CTRL2", "Exp1", "Exp2"))
+
+rownames(colData) <- colData$precise
 colData
 ```
 
@@ -66,11 +77,13 @@ To build a DESeq Data Set object, we need to provide 3 elements:
 - A design, which we would like to compare each other. It’s simply the condition of sample. We use condition because it corresponds to the column name in colData.
 
 When giving the design of DESeq2, we should consider which one wil be put as the factor. It means that, when the DESeq2 sets the model, we should clarify which one is different condition. In this case, we only have **condition** term to consider.
+
 ```{r}
 dds <- DESeqDataSetFromMatrix(countData, colData, design = ~ condition)
 ```
 
 While the pre-filteration of low count before running DESeq2 is not mandatory, there are two reasons which make pre-filtering useful: by removing rows in which there are very few reads, we reduce the memory size of the dds data object, and we increase the speed of the transformation and testing functions within DESeq2. Here we perform a minimal pre-filtering to keep only rows if there is at least one gene has expression. Note that more strict filtering to increase power is automatically applied via independent filtering on the mean of normalized counts within the results function.
+
 ```{r filtration}
 keep <- rowSums(counts(dds)) > 20
 dds <- dds[keep,]
@@ -82,6 +95,7 @@ dds <- dds[keep,]
 We will do data normalization as a first step of data normalization. The first parameter that influences gene read counts is the sequencing depth, the gene will get more or less reads depending on how much the samples were sequenced. For this reason, we need to do normalize the data for sequencing depth.
 
 In DESeq2, with estimateSizeFactors function that uses the median ratio method.Ssize factor for each sample would be calculated and it corresponds to the multiplication factor which could be used to normalize the counts for sample sequencing depth.
+
 ```{r size factor calculation}
 dds <- estimateSizeFactors(dds)
 sizeFactors(dds)
@@ -126,7 +140,17 @@ plot( assay(rld)[,3:4], pch=16, cex=0.5, main="Reg-log-Exp", xlim=c(0,20), ylim=
 abline(0, 1, lty=4, col="red")
 ```
 
-The plot from control is ideal form of correlation. Between two expreiment replicates, they have some noise but still it seems fine. 
+```{r}
+plot( assay(rld)[,1:2], pch=16, cex=0.5, main="Reg-log_control", xlim=c(0, 20), ylim=c(0, 20) )
+abline(0, 1, lty=4, col="red")
+```
+
+```{r}
+plot( assay(rld)[,3:4], pch=16, cex=0.5, main="Reg-log_Experiment", xlim=c(0, 20), ylim=c(0, 20) )
+abline(0, 1, lty=4, col="red")
+```
+
+The plot from control is ideal form of correlation. Between two experiment replicates, they have some noise but still it seems fine. 
 
 ### Clustering and Principal Component Analysis
 
@@ -139,40 +163,49 @@ First one is **Euclidean distance** between samples. The Euclidean distance is s
 In the present case, we will simply use all genes for which we have counts. We’ll make sure to use normalized and rlog transformed data so that the distance doesn’t simply reflect sequencing depth and is not dominated by a subset of genes.
 ```{r euclidean distance}
 sampleDists <- dist( t( assay(rld) ) )
+sampleDists <- distance
 ```
 
 Then we will generate heatmaps for this euclidean distance between samples to visualize the distance, how much samples are far or near. For heatmap, **normalized regularized-log-transformed** data was used.
+
 ```{r plotting cluster}
 sampleDistMatrix <- as.matrix( sampleDists ) 
+
 colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255) 
+
 pheatmap(sampleDistMatrix,
-         clustering_distance_rows=sampleDists,
-         clustering_distance_cols=sampleDists,
-         col=colors,
-         annotation_col =colData)
+         col = colors, 
+         annotation_col = colData,
+         clustering_distance_rows = sampleDists,
+         clustering_distance_cols = sampleDists)
 ```
 
 Or, we could use the clustering method which we tried on last session. 
 
 ```{r}
-hs <- hclust(dist(t(assay(rld))))
+log_c <- assay(rld)
+t <- t(log_c)
+distance <- dist(t)
+hs <- hclust(distance)
+
 plot(hs)
 ```
 
 #### Correlation plot
 
 Also, we could check the correlation between replicates by calculating **Pearson correlation coefficient**. They could be reported as heatmap with clustering, as similar way of previous plot.
+
 ```{r correlation plot}
 # calculate correlation between pairs of samples for all possible pairs.
 sampleCor <- cor(assay(rld))
-# generate heatmap
-pheatmap(
-  as.matrix(sampleCor),
-  annotation_col =as.data.frame(colData(rld)[,c(1,2)]),
-  main = "Correlation clustering",
-  width = 12,
-  height = 10
-)
+CorMat <- as.matrix(sampleCor)
+
+# Generating heatmap
+
+pheatmap(CorMat, 
+         annotation_col = colData,
+         width = 12,
+         height = 10)
 ```
 
 ## Conclusion
@@ -204,11 +237,17 @@ rownames(countData) <- count[,1]
 
 For sample information, the condition of sample, precise name of samples, and batch effect are required. For batch information, *rep()* could be used, rather than putting same information for several times.
 
+```{r}
+names(countData)
+```
+
 ```{r coldata batch}
-colData <- data.frame(condition=c(rep("D13A" , 3), rep("D13B", 3), rep("AdultA", 2), rep("AdultB", 2)),
-                       precise=c("D13_A1", "D13_A2","D13_A3","D13_B1", "D13_B2","D13_B3","Adult_D1", "Adult_D2","Adult_B1","Adult_B2"),
-                      batch=c("1", "1", "2", "1", "1", "2", rep("1", 4)))
-rownames(colData) <- colnames(countData)
+colData <- data.frame( condition = c( rep("D13A", 3), rep("D13B", 3), rep("AdultA", 2), rep("AdultB", 2) ),
+                       precise =c("D13_A1", "D13_A2","D13_A3","D13_B1", "D13_B2","D13_B3","Adult_D1", "Adult_D2","Adult_B1","Adult_B2"),
+                       batch = c( "1", "1", "2", "1", "1", "2", rep("1", 4)))
+
+rownames(colData) <- colData$precise
+  
 head(colData)
 ```
 
@@ -219,7 +258,7 @@ To build a DESeq Data Set object, we need to provide 3 elements: 1. A matrix of 
 We will build DESeq2 object, for calculating the size factor. Also, not like previously, **both batch and condition** should be considered.
 
 ```{r DESeq2 object batch}
-dds <- DESeqDataSetFromMatrix(countData, colData, design = ~batch + condition)
+dds <- DESeqDataSetFromMatrix(countData, colData, design = ~ batch + condition)
 ```
 
 While the pre-filteration of low count before running DESeq2 is not mandatory, there are two reasons which make pre-filtering useful: by removing rows in which there are very few reads, we reduce the memory size of the dds data object, and we increase the speed of the transformation and testing functions within DESeq2. Here we perform a minimal pre-filtering to keep only rows if there is at least one gene has expression. Note that more strict filtering to increase power is automatically applied via independent filtering on the mean of normalized counts within the results function.
@@ -234,7 +273,7 @@ dds <- dds[keep,]
 
 We will do data normalization as a first step of data normalization. The first parameter that influences gene read counts is the sequencing depth, the gene will get more or less reads depending on how much the samples were sequenced. For this reason, we need to do normalize the data for sequencing depth.
 
-In DESeq2, with estimateSizeFactors function that uses the median ratio method.Ssize factor for each sample would be calculated and it corresponds to the multiplication factor which could be used to normalize the counts for sample sequencing depth.
+In DESeq2, with estimateSizeFactors function that uses the median ratio method.Size factor for each sample would be calculated and it corresponds to the multiplication factor which could be used to normalize the counts for sample sequencing depth.
 ```{r size factor calculation batch}
 dds <- estimateSizeFactors(dds)
 sizeFactors(dds)
@@ -266,7 +305,7 @@ rld <- rlog(dds)
 ### Expression values on replicates
 
 As a first step of quality accessment, we could compare the the counts for two biological replicates to see the impact of the transformations. Here, what we could expect is that the correlation between two replicates will strong positive and linear correlation.
-```{r replicate - D13A}
+```{r replicate - D13A, fig.width=8}
 par(mfrow=c(2,3))
 plot( counts(dds, normalized = TRUE)[,1:2], pch=16, cex=0.5, main = "No transf-D13A1 vs D13A2")
 abline(0, 1, lty=4, col="red")
@@ -283,7 +322,7 @@ plot( assay(rld)[,2:3], pch=16, cex=0.5, main = "Reg-log-D13A2 vs D13A3", xlim=c
 abline(0, 1, lty=4, col="red")
 ```
 
-```{r replicate - D13B}
+```{r replicate - D13B, fig.width=8}
 par(mfrow=c(2,3))
 plot( counts(dds, normalized = TRUE)[,4:5], pch=16, cex=0.5, main = "No transf-D13B1 vs D13B2")
 abline(0, 1, lty=4, col="red")
@@ -312,6 +351,8 @@ abline(0, 1, lty=4, col="red")
 plot( assay(rld)[,9:10], pch=16, cex=0.5, main="Reg-log-Adult B", xlim=c(0,20), ylim=c(0,20))
 abline(0, 1, lty=4, col="red")
 ```
+
+
 
 Here, what we could know are as below
 - D13A2 and D13A3 : not so strong correlation between each other
@@ -342,6 +383,15 @@ pheatmap(sampleDistMatrix,
          col=colors,
          annotation_col =colData[,c(1,3)]
          )
+```
+
+```{r}
+log_c <- assay(rld)
+t <- t(log_c)
+distance <- dist(t)
+hs <- hclust(distance)
+
+plot(hs)
 ```
 
 #### Correlation plot
@@ -380,12 +430,12 @@ fviz_eig(pca)
 
 So there are total 10 explained variances and mostly are explained by PC1 and PC2. To reduce the dimensions which explains the variance, let’s check the data by PCA plot.
 
-```{r pca plot}
-plotPCA(rld, intgroup="condition") + geom_text_repel(aes(label = colData(rld)$precise))
+```{r}
+plotPCA(rld, intgroup="batch") + geom_text_repel(aes(label = colData(rld)$precise))
 ```
 
-```{r pca plot batch}
-plotPCA(rld, intgroup="batch") + geom_text_repel(aes(label = colData(rld)$precise))
+```{r pca plot}
+plotPCA(rld, intgroup="condition") + geom_text_repel(aes(label = colData(rld)$precise))
 ```
 
 Okay, from the PCA plot, again we could check the batch effect. To see the effect from different condition, we should check the data after removing batch effect.
@@ -397,8 +447,11 @@ To exclude the effect from batch information, we could use *removeBatchEffect* f
 vsd <- vst(dds, blind=FALSE)
 
 mat <- assay(vsd)
+
 mat <- limma::removeBatchEffect(mat, vsd$batch)
+
 assay(vsd) <- mat
+
 plotPCA(vsd) + geom_text_repel(aes(label = colData(rld)$precise)) + ggtitle("Sample PCA, regularized-log-transformed normalized data")
 ```
 

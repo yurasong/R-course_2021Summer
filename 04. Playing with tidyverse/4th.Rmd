@@ -1,0 +1,362 @@
+---
+title: "R course : Summer 2021"
+subtitle : "Day 4 : Playing with tidyverse"
+author: "Yura Song"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output:
+  html_notebook:
+    toc: yes
+---
+
+# Introduction
+
+During the three different courses, we have managed several different plots and packages which we could work on our own dataset. However, what if we need to change some values or filter out based on the specific values? Maybe you might think to export your data and filter out on excel. 
+
+Here, we will talk about the **tidyverse** package, opinionated collection of R packages designed for data science. All packages share an underlying design philosophy, grammar, and data structures. 
+
+## Installation and attachment
+
+```{r}
+install.packages("tidyverse")
+```
+
+```{r libraries}
+library(tidyverse)
+```
+
+## Dataset
+
+Here, we will use one of the in-nate dataset in R, called **mtcars**. This data was extracted from US motors magazine, composed of 32 observations on 11 numeric variables.
+
+```{r}
+data(mtcars)
+```
+
+# Getting glimpse of the data
+
+Before starting the manipulation with **tidyverse**, we will check how the data looks like. In other words, getting glimpse of the data by using different functions. We already managed *head* function at the very first time, to get the first six lines and the structure of data matrix.
+
+```{r}
+head(mtcars)
+```
+
+## Descriptive and compact display of dataset
+
+What if you would like to see more descriptive, rather than structure and first six or more lines? *summary* function will help you, which returns the results of various model fitting functions. Especially, the data table with the numeric values, it will show the distribution of values and it would be quie useful 
+
+```{r}
+summary(mtcars)
+```
+
+Rather than those two functions, *str* function will show the internal stucture of your object. It could be the alternative of *summary* function.
+
+```{r}
+str(mtcars)
+```
+
+## Size and row/column information
+
+If we would like to know the size of dataset, we could use *dim()* function. Always the order is the number of row on the first and then number of column.
+
+```{r}
+dim(mtcars)
+```
+
+For the number of rows or columns, the function *nrow()* or *ncol()* will work!
+
+```{r}
+nrow(mtcars)
+```
+
+For getting the names of column or row, we could take them by using *colnames()* or *rownames()*.
+
+```{r}
+colnames(mtcars)
+```
+
+```{r}
+rownames(mtcars)
+```
+
+To get the name of column, not only with *colnames()* but *names* works as same way.
+
+```{r}
+names(mtcars)
+```
+
+# Tidyverse
+
+Why should we take care of **Tidyverse**? It is already highly structured and usability is better. Not only the code, but **grammar** for coding matters a lot! Also the readability of codes are obviously clear.
+
+For tidyverse, regardless of the function, the first input should be the dataset which we would like to put into the function.
+
+## Basic structure for the data manipulation
+
+The works with **tidyverse**, we could connect the sequence of works by using **pipes**. Using *%>%* to emphasise a sequence of actions, rather than the object that the actions are being performed on.
+
+Pipe should always have a space before it, and should usually be followed by a new line. After the first step, each line should be indented by two spaces. For example:
+
+```{r}
+data(iris)
+
+# Good
+iris %>%
+  group_by(Species) %>%
+  summarize_if(is.numeric, mean) %>%
+  ungroup() %>%
+  gather(measure, value, -Species) %>%
+  arrange(value)
+
+# Bad
+iris %>% group_by(Species) %>% summarize_all(mean) %>%
+ungroup %>% gather(measure, value, -Species) %>%
+arrange(value)
+```
+
+Avoid using the pipe when:
+
+- You need to manipulate more than one object at a time. Reserve pipes for a sequence of steps applied to one primary object.
+- There are meaningful intermediate objects that could be given informative names.
+
+## Verbs
+
+Tidyverse provides several verbs, which corresponds to *function* in R. It is included the package called **dplyr**, which is dependency of **tidyverse**. The verbe included in **tidyverse** is a grammar of data manipulation, providing a consistent set of verbs that help you solve the most common data manipulation challenges.
+
+Main five verbs provided by dplyr would be *arrange()*, *select()*, *filter()*, *summarise()* and *mutate()*. 
+
+Here, we will manage some verbs which are mainly used for the data analysis and data manipulation, also including *glimpse()* verb. 
+
+### Arrange 
+
+*arrange()* orders the rows of a data frame by the values of selected columns. To use *arrange()*, you should clarify the dataset, what to be arranged, the order for arrangement in the same group.
+
+```{r}
+arrange(mtcars, desc(disp)) # As a descending manner
+```
+
+```{r}
+arrange(mtcars, cyl, desc(disp))
+```
+
+Unlike other dplyr verbs, *arrange()* largely ignores grouping; you need to explicitly mention grouping variables (or use .by_group = TRUE) in order to group by them, and functions of variables are evaluated once per data frame, not once per group.
+
+```{r}
+by_cyl <- mtcars %>% 
+  group_by(cyl) %>% 
+  arrange(desc(wt), .by_group = TRUE)
+
+by_cyl
+```
+
+### select()
+
+When we subset our data, we usually use square brackets ([]). In **tidyverse**, the subset function is included and it is called *select()*. This works in the dataset, which is in data.frame format, by using a concise mini-language that makes it easy to refer to variables based on their name. In other words, it is useful for subsetting of columns.
+
+```{r}
+select(mtcars, hp, mpg)
+```
+
+Also the **negative seletion** is possible.
+
+```{r}
+select(mtcars, -hp)
+```
+
+Or, we also could use pipe for the *select()* function.
+
+```{r}
+mtcars %>% 
+  select(mpg, cyl, wt)
+```
+
+### filter()
+
+Imagine that we need to get the subset of our data which has the specific values we want. When we use the normal commands in R, we should put several brackets and then put the values back to your data. In **tidyverse**, the *filter()* function used to subset a data frame, retaining all rows that satisfy your conditions. Note that when a condition evaluates to NA the row will be dropped, unlike base subsetting with [].
+
+While using *filter()* function, there are many functions and operators that are useful when constructing the expressions used to filter the data:
+
+- is.na() : to decide whether filtering out NA values
+- ==, !=
+- >, <, >=, <=
+- &, |, !
+- between()
+
+We could start the basic usage of *filter()* function, using by one criterion.
+
+```{r}
+filter(mtcars, cyl == 4)
+```
+
+When multiple expressions are used, they are combined.
+
+```{r}
+filter(mtcars, gear == 3, hp > 200)
+```
+
+```{r}
+filter(mtcars, cyl == 4 & mpg > 25)
+```
+
+```{r}
+filter(mtcars, cyl == 4 | mpg > 25)
+```
+
+```{r}
+mtcars %>%
+  filter(mpg > mean(mpg, na.rm=T))
+```
+
+### mutate()
+
+Let's presume that you need to make any change on the column, like adding a new column. Maybe we need to export our dataset out of R and then move to excel. However, by using *mutate()* function, we could manage the manipulation on R directly because *mutate()* adds new variables and preserves existing ones. Note New variables overwrite existing variables of the same name. Variables can be removed by setting their value to NULL.
+
+With *mutate()* function, rows are not affected at all. Also, the attributes and classes in your data frame are definitely preserved. 
+
+Here as a example, we will put the ratio of mpg to hp as a new column. The new column wîll be added on the very end of the data.
+
+```{r}
+mutate(mtcars, mpg_hp_dplyr = mpg/hp)
+```
+
+Also the *mutate()* works for several addition.
+```{r}
+mutate(mtcars, 
+       mpg_hp_dplyr = mpg/hp,
+       mpg_wt = mpg/wt)
+```
+
+Because mutating expressions are computed within groups, they may yield different results on grouped tibbles. This will be the case as soon as an aggregating, lagging, or ranking function is involved. This will be the case as soon as an aggregating, lagging, or ranking function is involved.
+
+```{r}
+mtcars %>%
+  select(mpg, cyl, wt) %>%
+  mutate(mpg_norm = mpg / mean(mpg, na.rm = TRUE))
+```
+
+### summarise()
+
+With *summarise()* function, we could summarise each group to fewer rows. In other words, not like four main verbs which we dealt with previous steps, *summarise()* creates a new data frame.
+
+Note *summarise()* and *summarize()* are synonyms.
+
+It is similar to split-apply-combination concept, especially when working with *group_by()* manner. The name of output and operation should be specified.
+
+```{r}
+mtcars %>% 
+  group_by(gear) %>% 
+  summarise(meanHP = mean(hp))
+```
+
+If there are no grouping variables, the output will have a single row summarising all observations in the input.
+
+```{r}
+mtcars %>% 
+  summarise(meanHP = mean(hp))
+```
+
+Note that you cannot call *summarise()* for several times by using pipes. If needed, you could put a series of information in the function.
+
+```{r}
+mtcars %>% 
+  group_by(gear) %>% 
+  summarise(meanHP = mean(hp),
+            sdHP = sd(hp))
+```
+
+The another version is available, called *summarise_all()*. What if we would like to get all the average, but still consider the group? Just specify which function you would like to run as a input of *summarise_all()*.
+
+```{r}
+mtcars %>% 
+  group_by(gear) %>% 
+  summarise_all(mean)
+```
+
+### glimpse()
+
+*glimpse()* is more or less similar to *str()* or *summary()*, it shows all the information about the dataset.
+
+```{r}
+glimpse(mtcars)
+```
+
+## Pipe operation
+
+Pipe operator could connect the two different commands. The purpose is to lower improvement time and to enhance clarity and maintainability of code. The major task of this operator will forward a value, or the result of an expression, into the next function call/expression.
+
+When the function is given with pipe operator, the rond bracket () is not required anymore.
+
+```{r}
+mtcars$hp %>% 
+  log10
+```
+
+```{r}
+mtcars$hp %>% 
+  log10 %>% 
+  sin
+```
+
+### Comparison of using pipe or not
+
+#### Step by step with basic functions
+
+```{r}
+mtcars.new <- mtcars
+mtcars.new$carname <- rownames(mtcars)
+head(mtcars.new)
+```
+
+```{r}
+mazda.cars <- filter(mtcars.new, carname == "Mazda RX4" )
+```
+
+```{r}
+mazda.cars <- select(mazda.cars, hp, mpg)
+mazda.cars
+```
+
+#### using pipe operator
+
+```{r}
+mtcars.new %>% 
+  filter(carname == "Mazda RX4") %>% 
+  select(hp, mpg)
+```
+
+### Practice for the pipes
+
+Q. hp and mpg, but for cars with gear 3 and wt > 2 and sort it as a descending manner of mpg?
+```{r}
+mtcars %>% 
+  filter(gear == 3) %>% 
+  filter(wt > 2) %>% 
+  select(hp, mpg) %>%
+  arrange(hp, desc(mpg))
+```
+
+Q. Cars with hp/mpg greater than 9 + what are the gears + make a table and pie chart
+```{r}
+mtcars %>% 
+  mutate(hp_mpg = hp / mpg) %>% 
+  filter(hp_mpg > 9) %>% 
+  select(gear) %>% 
+  table
+```
+
+For the dataset generated by using several pipes, it is also available to save it as a new variable. There are two ways of saving.
+
+```{r}
+mtcars %>% 
+  filter(gear == 3) %>% 
+  filter(wt > 2) %>% 
+  select(hp, mpg) %>%
+  arrange(hp, desc(mpg)) -> data.final
+```
+
+```{r}
+data.final <- mtcars %>% 
+  filter(gear == 3) %>% 
+  filter(wt > 2) %>% 
+  select(hp, mpg) %>%
+  arrange(hp, desc(mpg))
+```

@@ -43,14 +43,19 @@ We can see that the data is mostly cluttered below 50 with one falling outside 1
 Some of the frequently used ones are, **main** to give the title, **xlab and ylab** to provide labels for the axes, **method** to specify the way coincident points are plotted like stacked or jitter, **col** to define color etc. Additionally, with the argument **vertical=TRUE** we can plot it vertically and with pch we can specify the plotting character (square by default). Some values of **pch** are 0 for square, 1 for circle, 2 for triangle etc. You can see the full list in the help section *?points*.
 
 What if we try to use several parameters? Let's try to setting the **jitter** for the method and giving details.
+
+```{r}
+stripchart(airquality$Ozone, main="Mean Ozone", xlab="Parts per billion", ylab="Ozone", method="jitter", col="red", pch=20)
+```
+
 ```{r jitter}
 stripchart(airquality$Ozone,
 main="Mean ozone in parts per billion at Roosevelt Island",
 xlab="Parts Per Billion",
 ylab="Ozone",
 method="jitter",
-col="orange",
-pch=1
+col="red",
+pch=20
 )
 ```
 
@@ -64,7 +69,9 @@ Let us consider the *Temp* field of *airquality* dataset. Let us also generate n
 # prepare the data
 temp <- airquality$Temp
 # gererate normal distribution with same mean and sd
-tempNorm <- rnorm(200,mean=mean(temp, na.rm=TRUE), sd = sd(temp, na.rm=TRUE))
+tempNorm <- rnorm(200,
+                  mean=mean(temp, na.rm=TRUE), 
+                  sd = sd(temp, na.rm=TRUE))
 # make a list
 x <- list("temp"=temp, "norm"=tempNorm)
 ```
@@ -82,9 +89,33 @@ pch=16
 )
 ```
 
+```{r}
+temp <- airquality$Temp
+wind <- airquality$Wind
+
+# make a list
+x <- list("temp"=temp, "wind"=wind)
+```
+
+```{r}
+stripchart(x,
+main="Multiple stripchart for comparision",
+xlab="Value",
+ylab="Dataset",
+method="jitter",
+col=c("orange","red"),
+pch=16
+)
+```
+
+
 ### Strip Chart from Formula
 
 Stripchart function also takes in formulas of the form **y ~ x** where, y is a numeric vector which is grouped according to the value of x. For example, in our dataset airquality, the Temp can be our numeric vector. Month can be our grouping variable, so that we get the strip chart for each month separately. In airquality dataset, month is in the form of number (1=January, 2-Febuary and so on).
+
+```{r}
+stripchart(Temp~Month, data=airquality, vertical=TRUE, xlab="Months", ylab="Temperature", group.names=c("May", "June", "July", "August", "September"))
+```
 
 ```{r}
 stripchart(Temp~Month,
@@ -104,6 +135,7 @@ pch=16
 A boxplot provides a graphical view of the median, quartiles, maximum, and minimum of a data set, by taking in any number of numeric vectors.
 
 Let's start with the basic boxplot with Ozone readings from airquality data.
+
 ```{r}
 boxplot(airquality$Ozone)
 ```
@@ -120,7 +152,7 @@ ylab = "Ozone",
 col = "orange",
 border = "brown",
 horizontal = TRUE,
-notch = TRUE
+notch = FALSE
 )
 ```
 
@@ -143,6 +175,7 @@ As we could see above, a list is returned.
 ### Multiple box plots
 
 We can draw multiple boxplots in a single plot, by passing in a list, data frame or multiple vectors, as we did on strip chart. Let us consider the Ozone and Temp field of airquality dataset. Let us also generate normal distribution with the same mean and standard deviation and plot them side by side for comparison.
+
 ```{r}
 # prepare the data
 ozone <- airquality$Ozone
@@ -166,7 +199,27 @@ notch = TRUE
 )
 ```
 
+```{r}
+boxplot(ozone, temp,
+        names=c("Ozone", "Temperature"),
+        col=c("Orange", "Red"),
+        border="brown",
+        ylab="Value")
+```
+
+```{r}
+boxplot(ozone, temp,
+        main = "Multiple boxplots",
+        names = c("ozone", "temp"),
+        col = c("orange", "red"),
+        xlab = "Value",
+        border = "brown",
+        horizontal = T, 
+        notch = T)
+```
+
 ### Boxplot from formula
+
 ```{r}
 boxplot(Temp~Month,
 data=airquality,
@@ -183,9 +236,12 @@ border="brown"
 A histogram is very common plot. It plots the frequencies that data appears within certain ranges. On R, histogram can be created using the *hist()* function. This function takes in a vector of values for which the histogram is plotted.
 
 ## Simple histogram
+
 ```{r}
-Temperature <- airquality$Temp
-hist(Temperature)
+temp <- airquality$Temp
+hist(temp)
+
+hist(airquality$Temp)
 ```
 
 We can see above that there are 9 cells with equally spaced breaks. In this case, the height of a cell is equal to the number of observation falling in that cell.
@@ -193,11 +249,17 @@ We can see above that there are 9 cells with equally spaced breaks. In this case
 ### Histogram with parameters
 
 Still the parameters are same as the previous two plots, there is several additional parameters to give. For instance, **col** to define color and the argument **freq=F** to get the probability distribution rather than frequency.
+
+
+```{r}
+hist(temp, xlim=c(50, 100), freq=FALSE, col="Skyblue")
+```
+
 ```{r}
 # histogram with added parameters
-hist(Temperature,
+hist(Temperature, # airquality$Temp
 main="Maximum daily temperature at La Guardia Airport",
-xlab="Temperature in degrees Fahrenheit",
+xlab="Temperature in degrees",
 xlim=c(50,100),
 col="darkmagenta",
 freq=FALSE
@@ -209,7 +271,7 @@ Since we set **freq=F**, y-axis label is density, not frequency. In this case, t
 ### Return value of histogram
 
 ```{r}
-h <- hist(Temperature)
+h <- hist(temp)
 h
 ```
 
@@ -233,9 +295,12 @@ text(h$mids,h$counts,labels=h$counts, adj=c(0.5, -0.5))
 With the **break** argument, we could specify the number of cells we want in the histogram. If we do not give value for **break**, R calculates the best number of cells, keeping this suggestion in mind. Following are two histograms on the same data with different number of cells.
 
 ```{r}
-par(mfrow=c(1,2))
-hist(Temperature, breaks=4, main="With breaks=4")
-hist(Temperature, breaks=20, main="With breaks=20")
+#par(mfrow=c(1,2))
+
+hist(temp)
+
+hist(temp, breaks=4, main="With breaks=4")
+hist(temp, breaks=15, main="With breaks=15")
 ```
 
 On the above figure we see that the actual number of cells plotted is greater than we had specified.
@@ -262,13 +327,18 @@ breaks=c(55,60,70,75,80,100)
 A scatter plot provides a graphical view of the relationship between two sets of numbers.
 ```{r}
 plot(airquality$Temp, airquality$Ozone)
+plot(temp, ozone)
 ```
 
 ### Scatter plot with parameters
 
 It is always common that the parameters could be adjusted. The parameters are same as strip chart.
 ```{r}
-plot(airquality$Temp, airquality$Ozone, col="red", pch =19, main="Relationship between Ozone reading and temperature")
+plot(airquality$Temp, airquality$Ozone, 
+     col="red", 
+     pch =19, 
+     xlim=c(50, 100),
+     main="Relationship between Ozone reading and temperature")
 ```
 
 Here, *pch* option is corresponding to the shape of point. 
@@ -333,6 +403,10 @@ Since we are already getting familiar with the basic plotting functions via seve
 In this section, we will try to generate plots according to the various distributions. In this time, we will generate several distributions with random numbers.
 
 ```{r}
+list.files()
+```
+
+```{r}
 data <- read.delim("count_experssion.csv", h=T, sep=",")
 data
 ```
@@ -344,24 +418,28 @@ y <- data$Y
 
 ## Error bars
 
-Sometimes, if we are working with replicates, it would generate a set of data points. In this case, we could add **error bars** Tby using the *arrows* command. 
+Sometimes, if we are working with replicates, it would generate a set of data points. In this case, we could add **error bars** and using the *arrows* command. 
 ```{r}
-plot(x,y,xlab="drug X",ylab="drug Y",main="Random Stuff")
+library(plotrix)
+
+plot(x, y, xlab="drug X", ylab="drug Y", main="Random Stuff")
+dev.off()
+
 xHigh <- x
-yHigh <- y + std.error(y)
 xLow <- x
+
+yHigh <- y + std.error(y)
 yLow <- y - std.error(y)
-arrows(xHigh,yHigh,xLow,yLow,col=2,angle=90,length=0.1,code=3)
+
+plot(x, y, xlab="drug X", ylab="drug Y", main="Random Stuff")
+arrows(xHigh, yHigh, xLow, yLow, col=2, angle=90, length=0.1, code=3)
 ```
 
 However, it seems that the under error bar of the smallest X value and upper error bar of the lagest X value is not showed properly. Therefore, we should adjust the range of Y axis. In this case, *ylim* option is the key!
 
 ```{r}
+#dev.off()
 plot(x,y,xlab="drug X",ylab="drug Y",main="Random Stuff", ylim=c(15, 50))
-xHigh <- x
-yHigh <- y + std.error(y)
-xLow <- x
-yLow <- y - std.error(y)
 arrows(xHigh,yHigh,xLow,yLow,col=2,angle=90,length=0.1,code=3)
 ```
 
@@ -443,14 +521,17 @@ dim(count)
 There are seven different columns and the total number of genes is 49671.
 
 Since the matrix should have the gene expression values only with the rownames, what we will do is creating proper format of gene expression matrix. Sometimes the same genes with same geneID could be included, we should check it by *unique* function. It is not mandatory, but recommended.
+
 ```{r}
 count <- unique(count)
-
-dsample <- count[,3:ncol(count)]
-rownames(dsample) <- count[,1]
+head(count)
 ```
 
 ```{r}
+dsample <- count[,3:ncol(count)]
+
+rownames(dsample) <- count$Gene.ID
+
 head(dsample)
 ```
 
@@ -483,7 +564,9 @@ The 2D format of unsupervised clustering only has branches between the samples. 
 
 *hclust* function is used for hierarchical cluster analysis on a set of dissimilarities and a representative methods for analyzing it. With this function, we could generate the unsupervised clustering results to plot on the session.
 ```{r}
-hs <- hclust(dist(t(dsample)))
+t <- t(dsample)
+distance <- dist(t)
+hs <- hclust(distance)
 plot(hs)
 ```
 
@@ -500,9 +583,15 @@ varM1 <- varM[order(varM, decreasing=TRUE)] # Order the calculated variances
 Here, we will use only the 500 most variable genes, but you could adjust number of genes by changing the range of variance data.
 ```{r}
 varM1 <- varM1[1:500] 
+
 dM <- dsample[names(varM1),]
 
-plot(hclust(dist(t(dM))))
+t <- t(dM)
+distance <- dist(t)
+hs <- hclust(distance)
+plot(hs)
+
+#plot(hclust(dist(t(dM)))) : fullset without giving the intermediates
 ```
 
 ## Heatmap
@@ -567,7 +656,7 @@ Okay, so finally we got the heatmap on our hand! However, what if we would like 
 #### Extract genes plotted on heatmap
 
 ```{r}
-write.table(dM, "200_most_variable.csv", quote=F, sep="\t", row.names=T, col.names=T)
+write.table(dM, "200_most_variable_heatmap.csv", quote=F, sep=",", row.names = T, col.names = T)
 ```
 
 #### Z-score plotted on heatmap
@@ -585,9 +674,14 @@ hm <- heatmap.2(as.matrix(dM),
                 trace = "none") #Data histrogram on heatmap
 ```
 
+```{r}
+head(hm$carpet)
+```
+
+
 Then you could extract Z-score from the heatmap saved into the variable **hm**.
 ```{r}
-write.table(t(hm$carpet), "Z-score.csv", quote=F, sep="\t", row.names=T, col.names=T)
+write.table(t(hm$carpet), "Z-score.csv", quote=F, sep=",", row.names=T, col.names=T)
 ```
 
 ## PCA plot
@@ -595,6 +689,7 @@ write.table(t(hm$carpet), "Z-score.csv", quote=F, sep="\t", row.names=T, col.nam
 The last one what we could try with RNA-seq data is PCA plot. **Principal Component Analysis (PCA)** is a dimension-reduction tool that can be used to reduce a large set of variables to a small set that still contains most of the information in the large set. It may sound a lot difficult to understand, but it is kind of projection of variances into 2-dimentional plot. 
 
 We will work on the dataset which we already generated on preparation step. There are four different libraries required for the PCA plotting.
+
 ```{r}
 library(ggplot2)
 library(ggfortify)
@@ -618,12 +713,12 @@ autoplot(pca_tdf)
 
 This is the basic format of PCA plot. However, we would like to know which samples is which point, we should add the label on the plot.
 ```{r}
-autoplot(pca_tdf, label = TRUE, label.size = 3)
+autoplot(pca_tdf, label = TRUE, label.size = 4)
 ```
 
 Well, it seems not so good because the point and label is overlap. What we could try is removing the point, in other words, use the label as point.
 ```{r}
-autoplot(pca_tdf, label = TRUE, label.size = 3, shape=FALSE)
+autoplot(pca_tdf, label = TRUE, label.size = 4, shape=FALSE)
 ```
 
 ### K-means clustering based on the PCA plot
@@ -631,12 +726,18 @@ autoplot(pca_tdf, label = TRUE, label.size = 3, shape=FALSE)
 What if we could calculate clusters on the PCA plot? We could do the K-means clustering on the PCA plot which we have generated. k-means clustering aims to partition n observations into k clusters in which each observation belongs to the cluster with the nearest mean, serving as a prototype of the cluster. 
 
 To get the K-means clustering, what we could use is *kmeans* function. Here, we will try several different number of clusters. By adjusting the number of clusters, the color of label is automatically changed by group. 
+
 ```{r}
-autoplot(kmeans(pca_tdf$x, 2), data=pca_tdf,label = TRUE, label.size = 4, shape=FALSE)
+k2 <- kmeans(pca_tdf$x, 2) 
+k3 <- kmeans(pca_tdf$x, 3) 
 ```
 
 ```{r}
-autoplot(kmeans(pca_tdf$x, 3), data=pca_tdf,label = TRUE, label.size = 4, shape=FALSE)
+autoplot(k2, data=pca_tdf, label = TRUE, label.size = 4, shape=FALSE)
+```
+
+```{r}
+autoplot(k3, data=pca_tdf,label = TRUE, label.size = 4, shape=FALSE)
 ```
 
 ```{r}
