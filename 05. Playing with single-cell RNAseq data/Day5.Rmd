@@ -1,0 +1,356 @@
+---
+title: "R course : Summer 2021"
+subtitle : "Day 5 : Deal with the single-cell datasets"
+author: "Yura Song"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output:
+  html_notebook:
+    toc: yes
+---
+
+# Introduction
+
+As the last session, we will try to play a bit with single-cell RNAseq data. Most of you might already have single-cell RNAseq datasets, which are analysed by me or Ahmad at one point. 
+
+In this session, we will play a bit about single-cell RNAseq data, like changing the resolution and get the clusters and getting violin plot. 
+
+## Installation of package
+
+For single-cell RNAseq data analysis and plotting, we need some specific packages. We will install one by one.
+
+### Seurat
+
+Seurat is the tools for the single-cell RNAseq data, covering from the pre-process to the downstream analysis. We will mainly use this package to proceed and calculate the UMAP.
+
+```{r seurat}
+install.packages('Seurat')
+```
+
+### Depedencies
+
+```{r install dependencies}
+install.packages(c("patchwork", "data.table", "magrittr"))
+```
+
+When the packages are all installed, please attach them on your environment.
+
+```{r load library}
+library(Seurat)
+library(ggplot2)
+library(patchwork)
+library(tidyverse)
+library(data.table)
+library(magrittr)
+```
+
+# Data preprocess
+
+Here, we will not play with the data pre-process by our own. For the data pre-process, bioinformaticians mainly check the quality of data and trim out the bad quality of cells or reads. This is not recommended on your personal laptop, since it requires large capacity of memory.
+
+Here, we will start from the data, which is already trimmed and ready to work on the process. This data is already including the linear dimensional reduction, so ready to define the cluster.
+
+```{r load data}
+seuset <- readRDS("Preproceeded_scRNA.rds")
+seuset
+```
+
+# Cluster the cells
+
+On Seurat, it applies a graph-based clustering approach to define the cluster. Importantly, the distance metric which drives the clustering analysis (based on previously identified PCs) remains the same.
+
+Seurat has two steps to cluster the cells. First step is constructing the KNN graph based ont he euclidean distance on PCA. Then, refine the edge weights between any two cells, based on the shared overlap in their local neighbourhood.
+
+## Decide dimensionality
+
+Since Seurat uses the dimensions on the PCA to calculate cluster, so we will define how many of PCs to use for the definition of cluster on our sample. 
+
+```{r}
+ElbowPlot(seuset, ndims = 40)
+```
+
+Usually, we decide the number of PCs where the lower plateau starts to be sure. In other words, we choose the point where the variability is not too considerable. Here, we will take first 30 PCs for defining the cluster. 
+
+If we use more dimension it cause more clusters, this should be see more in detail. However, if you take too high dimension than the proper PCs, it will cause over-clustering or bring difficulties on the interpretation.
+
+```{r}
+seuset <- FindNeighbors(seuset, dims = 1:30)
+```
+
+When the nearest neighbour is calculated based on the PCs we decided, we need to find the clusters with the specific **resolutions** you will apply. **Resolution** is same as the magnification of the lenses on the microscope, so if you set the high resolution, you will get more clusters with details. 
+
+For setting the resolution, you could test several different resolutions and then decide which one is the proper value for your data. Usually three to four values are tested, and check whether the clusters are too vague or over-clustered. 
+
+Here, we will put the value as 0.3 for practice.
+
+```{r}
+seuset <- FindClusters(seuset, resolution = 0.3)
+```
+
+## Run non-linear dimensional reduction (UMAP/tSNE)
+
+Seurat offers several non-linear dimensional reduction techniques, such as tSNE and UMAP, to visualize and explore these datasets. 
+
+```{r}
+# If you haven't installed UMAP, you can do so via reticulate::py_install(packages =
+# 'umap-learn')
+
+## You need to consider this as a important part too.
+
+seuset <- RunUMAP(seuset, dims = 1:30)
+```
+
+```{r}
+DimPlot(seuset, reduction = "umap", label = TRUE, label.size = 4)
+```
+
+### To get the information of each cluster
+
+When we run the analysis with Seurat, it includes the information of each cells in *meta.data*. We could check several informations, including which cells are annotated as which cluster or how many genes are detected in each cells.
+
+Here, before moving on, we will check our *meta.data*. 
+
+```{r}
+## extract meta data
+md <- seuset@meta.data %>% as.data.table
+# the resulting md object has one "row" per cell
+
+## count the number of cells per unique combinations of "Sample" and "seurat_clusters"
+md[, .N, by = c( "seurat_clusters")]
+md
+```
+
+# For annotation of each cluster
+
+Okay, now we have the clusters on the UMAP. However, we need to annotate which cluster is composed of which one. Seurat provides several different functions to get the idea, including visualisation of the gene expression.
+
+## Finding differentially expressed features
+
+Seurat can help you find markers that define clusters via differential expression. By default, it identifies positive and negative markers of a single cluster, compared to all other cells. 
+
+```{r}
+seuset.markers <- FindAllMarkers(seuset, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+```
+
+The *min.pct* argument requires a feature to be detected at a minimum percentage in either of the two groups of cells, and the thresh.test argument requires a feature to be differentially expressed (on average) by some amount between the two groups. 
+
+Here, since our purpose for getting maker genes is to define the cluster and decide which one would be the contamination, so we will take only top 50 marker of individual clusters.
+
+```{r}
+top50 <- seuset.markers %>% group_by(cluster) %>% top_n(n = 50, wt = avg_log2FC)
+head(top50)
+```
+
+For check-up, we could export it as *.csv* file format.
+
+```{r}
+write.table(top50, "Top50_Markers_cluster.csv", quote=F, sep=",", row.names=F, col.names=T)
+```
+
+## Violin plot
+
+Not only with the *FindAllMarkers* function, Seurat provides several tools for visualizing marker expression. The first one is called **violin plot**.
+
+```{r}
+VlnPlot(seuset, features = "Esr1")
+```
+
+For *VlnPlot()*, we could put several genes by using combination, *c()*.
+
+```{r, fig.height=8}
+VlnPlot(seuset, features = c("Esr1", "Acta2", "Elf5"), ncol=1)
+```
+
+## Feature plot
+
+What if we would like to see the gene expression on the UMAP directly, rather than checking the violin plot? *FeaturePlot()* will help you! It is exactly same as *VlnPlot()*.
+
+```{r, fig.height=8}
+FeaturePlot(seuset, features = c("Esr1", "Pgr", "Acta2", "Elf5"), ncol=2)
+```
+
+### For the long list of genes
+
+Putting three or four genes in the function using *c()* would not be something bothered. However, what if we have like 20 genes to check? In this case, we could declare the list of genes we would like to see, then make the plotting as loop!
+
+```{r}
+gene_list <- c("Pdgfra", "Vim", "Zeb2", "Itgb1", "Itga6", "Epcam", "Prom1", "Ly6a", "Foxa1", "Prlr", "Myb", "Cited1", "Pgr", "Tspan1", "Esr1", "Elf5", "Kit", "Krt8", "Krt18", "Krt19", "Krt7", "Cldn4", "Cdh1")
+```
+
+#### Loop for Feature plot
+
+```{r}
+feature <- function(x) {
+  
+  FeaturePlot(seuset,features =x)
+}
+
+dir.create("Feature")
+pathdir <- file.path("Feature")
+
+for (i in 1:length(gene_list)){
+  feature(gene_list[i])
+  ggsave(path = pathdir, paste(gene_list[i],"_FeaturePlot.pdf",sep=""), width = 20, height = 20, units = "cm")
+}
+```
+
+
+#### Loop for Violin plot
+
+```{r}
+violin <- function(x) {
+      
+  VlnPlot(seuset, features = x)
+}
+
+dir.create("Violin")
+pathdir <- file.path("Violin")
+
+for (i in 1:length(gene_list)){
+  violin(gene_list[i])
+  ggsave(path = pathdir, paste(gene_list[i],"_ViolinPlot.pdf",sep=""), width = 20, height = 20, units = "cm")
+}
+```
+
+# Take the clusters which we need 
+
+Based on the marker genes, we could clarify which clusters are the one we need to keep for the further analysis. If yes, what we should do is taking the clusters which we would like to keep from the Seurat object which we used for the clustering. 
+
+In this example, among the initial clusters, what we need are 1, 3 and 8. Therefore, we will only take those three clusters and re-cluster it.
+
+```{r}
+names(seuset@meta.data)
+```
+
+On the *meta.data* of our seurat object, the cluster information is included in **RNA_snn_res.0.3**. 
+
+```{r}
+filt.seuset <- seuset[, seuset$RNA_snn_res.0.3 %in% c(1, 3, 8)]
+```
+
+## Re-clustering 
+
+Since we take the clusters which we need, what we need to do is re-calculate the clusters and plot it on UMAP. This step is required because when we subcluster the certain clusters from the whole data, the neighbour and variability information is changed so the definition of clusters will be changed.
+
+The first step is identification of feature genes on the selected clusters with *FindVariableFeatures()* function. This will find out the variability between genes and find outliers.
+
+```{r}
+filt.seuset <- FindVariableFeatures(filt.seuset, selection.method = "vst", nfeatures = 1000)
+```
+
+Then we will scale and calculate PCs. Scale is same concept as normalization, but in Seurat, the variable features which we calculated on the previous step are used.
+
+```{r}
+all.genes <- rownames(filt.seuset)
+filt.seuset <- ScaleData(filt.seuset, features = all.genes)
+```
+
+```{r}
+filt.seuset <- RunPCA(filt.seuset, features = VariableFeatures(object = filt.seuset))
+```
+
+```{r}
+ElbowPlot(filt.seuset,ndim=40)
+```
+
+Still, we could use 30 PCs on the subclusters. The further steps are exactly same as the one we did on the pre-proceeded datasets.
+
+```{r}
+filt.seuset <- FindNeighbors(filt.seuset, dims = 1:30, k.param = 5)
+filt.seuset <- FindClusters(filt.seuset, resolution = 0.3)
+filt.seuset <- RunUMAP(filt.seuset, dims = 1:30)
+DimPlot(filt.seuset, reduction = "umap",label = T,label.size = 4)
+```
+
+## For annotation of each cluster
+
+Okay, now we have the clusters with selected ones on the UMAP. Still, we need to annotate which cluster is composed of which one. 
+
+### Finding differentially expressed features
+
+Seurat can help you find markers that define clusters via differential expression. By default, it identifies positive and negative markers of a single cluster, compared to all other cells. 
+
+```{r}
+seuset.filt.markers <- FindAllMarkers(filt.seuset, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+```
+
+Here, not like previously, we will just take top10 genes to make a heatmap. Note that putting too much of genes on heatmap is not informative!
+
+```{r, fig.height=8}
+top10 <- seuset.filt.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
+DoHeatmap(filt.seuset, features = top10$gene) + NoLegend()
+```
+
+Also, you could save the heatmap by using *ggsave()* function, with setting the width and height of plot.
+
+```{r}
+ggsave(filename = "Heatmap_top10_genes.pdf", width = 25, height = 35, units = "cm")
+```
+
+## Violin plot
+
+Not only with the *FindAllMarkers* function, Seurat provides several tools for visualizing marker expression. The first one is called **violin plot**.
+
+```{r}
+VlnPlot(filt.seuset, features = "Esr1")
+```
+
+For *VlnPlot()*, we could put several genes by using combination, *c()*.
+
+```{r, fig.height=8}
+VlnPlot(filt.seuset, features = c("Esr1", "Acta2", "Elf5"), ncol=1)
+```
+
+## Feature plot
+
+What if we would like to see the gene expression on the UMAP directly, rather than checking the violin plot? *FeaturePlot()* will help you! It is exactly same as *VlnPlot()*.
+
+```{r, fig.height=8}
+FeaturePlot(filt.seuset, features = c("Esr1", "Pgr", "Acta2", "Elf5"), ncol=2)
+```
+
+### For the long list of genes
+
+Putting three or four genes in the function using *c()* would not be something bothered. However, what if we have like 20 genes to check? In this case, we could declare the list of genes we would like to see, then make the plotting as loop!
+
+#### Loop for Feature plot
+
+```{r}
+feature <- function(x) {
+  
+  FeaturePlot(filt.seuset,features =x)
+}
+
+dir.create("Feature_Filt")
+pathdir <- file.path("Feature_Filt")
+
+for (i in 1:length(gene_list)){
+  feature(gene_list[i])
+  ggsave(path = pathdir, paste(gene_list[i],"_FeaturePlot.pdf",sep=""), width = 20, height = 20, units = "cm")
+}
+```
+
+#### Loop for Violin plot
+
+```{r}
+violin <- function(x) {
+      
+  VlnPlot(filt.seuset, features = x)
+}
+
+dir.create("Violin_Filt")
+pathdir <- file.path("Violin_Filt")
+
+for (i in 1:length(gene_list)){
+  violin(gene_list[i])
+  ggsave(path = pathdir, paste(gene_list[i],"_ViolinPlot.pdf",sep=""), width = 20, height = 20, units = "cm")
+}
+```
+
+```{r}
+save.image("Practice_scRNA_Day5.RData")
+```
+
+```{r}
+sessionInfo()
+```
+
